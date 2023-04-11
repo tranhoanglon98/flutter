@@ -1,9 +1,16 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'post.dart';
 import 'friend.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const BasicLayoutApp());
 }
 
@@ -35,25 +42,6 @@ class AppData extends ChangeNotifier {
     'Events': const Icon(Icons.event),
     'Game': const Icon(Icons.gamepad)
   };
-
-  final List<Friend> friendList = [
-    Friend('Trần Văn A', 'images/posts/1.jpg', true),
-    Friend('Trần Văn B', 'images/posts/2.jpg', false),
-    Friend('Trần Văn C', 'images/posts/3.jpg', false),
-    Friend('Trần Văn D', 'images/posts/4.jpg', true),
-    Friend('Trần Văn E', 'images/posts/5.jpg', true),
-    Friend('Trần Văn F', 'images/stories/1.jpg', false),
-    Friend('Trần Văn G', 'images/stories/3.jpg', true),
-    Friend('Trần Văn H', 'images/stories/4.jpg', true),
-    Friend('Trần Văn I', 'images/stories/0.jpg', false),
-    Friend('Trần Văn K', 'images/stories/7.jpg', true),
-    Friend('Trần Văn L', 'images/posts/1.jpg', true),
-    Friend('Trần Văn M', 'images/posts/4.jpg', false),
-    Friend('Trần Văn N', 'images/posts/2.jpg', true),
-    Friend('Trần Văn O', 'images/stories/6.jpg', true),
-    Friend('Trần Văn P', 'images/posts/5.jpg', true),
-    Friend('Trần Văn Q', 'images/stories/1.jpg', false),
-  ];
 
   final List<Post> posts = [
     Post(
@@ -273,7 +261,8 @@ class FriendList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    List<Friend> friends = context.read<AppData>().friendList;
+    FirebaseFirestore db = FirebaseFirestore.instance;
+
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Column(
@@ -291,39 +280,47 @@ class FriendList extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: 20.0),
-              child: ListView.builder(
-                itemCount: friends.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    color: Colors.white,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          CircleAvatar(
-                              backgroundImage:
-                                  NetworkImage(friends[index].avatarImgPath),
-                              radius: 18),
-                          SizedBox(
-                              width: 100,
-                              child: Text(
-                                friends[index].name,
-                                style: const TextStyle(color: Colors.blue),
-                              )),
-                          Icon(
-                            Icons.circle,
-                            size: 10,
-                            color: friends[index].status
-                                ? const Color.fromARGB(255, 33, 226, 40)
-                                : const Color.fromARGB(255, 166, 167, 166),
-                          )
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+              child: StreamBuilder<QuerySnapshot>(
+                  stream: db.collection('friends').snapshots(),
+                  builder: (context, snapshot) {
+                    return ListView(
+                      children: snapshot.data!.docs
+                          .map((friend) => Card(
+                                color: Colors.white,
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(0, 8, 8, 8),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceAround,
+                                    children: [
+                                      CircleAvatar(
+                                          backgroundImage:
+                                              AssetImage(friend['avatar']),
+                                          radius: 18),
+                                      SizedBox(
+                                          width: 100,
+                                          child: Text(
+                                            friend['name'],
+                                            style: const TextStyle(
+                                                color: Colors.blue),
+                                          )),
+                                      Icon(
+                                        Icons.circle,
+                                        size: 10,
+                                        color: friend['status']
+                                            ? const Color.fromARGB(
+                                                255, 33, 226, 40)
+                                            : const Color.fromARGB(
+                                                255, 166, 167, 166),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                    );
+                  }),
             ),
           ),
         ],
@@ -537,6 +534,8 @@ class Stories extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    FirebaseFirestore db = FirebaseFirestore.instance;
+
     return SizedBox(
         height: 300,
         child: Padding(
@@ -549,45 +548,59 @@ class Stories extends StatelessWidget {
                 style: TextStyle(fontSize: 20, color: Colors.blue),
               ),
               Expanded(
-                child: ListView.builder(
-                  itemBuilder: (context, index) {
-                    return Container(
-                      margin: const EdgeInsets.fromLTRB(0, 5, 10, 10),
-                      child: Stack(children: [
-                        Card(
-                          elevation: 10,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15)),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(15),
-                            child: Image(
-                              image: AssetImage('images/stories/$index.jpg'),
-                              height: 220,
-                              width: 140,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 10,
-                          left: 10,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.blue, width: 3),
-                            ),
-                            child: const CircleAvatar(
-                                backgroundImage: NetworkImage(
-                                    'https://th.bing.com/th/id/R.711530bb80c16506a9587182c0987996?rik=7bQLMBGpfBKFQQ&pid=ImgRaw&r=0'),
-                                radius: 18),
-                          ),
-                        )
-                      ]),
-                    );
-                  },
-                  itemCount: 8,
-                  scrollDirection: Axis.horizontal,
-                ),
+                child: StreamBuilder<QuerySnapshot>(
+                    stream: db
+                        .collection('friends')
+                        .where('story', isNull: false)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      return ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            if (snapshot.hasData)
+                              for (var doc in snapshot.data!.docs)
+                                Container(
+                                  margin:
+                                      const EdgeInsets.fromLTRB(0, 5, 10, 10),
+                                  child: Stack(children: [
+                                    Card(
+                                      elevation: 10,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15)),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(15),
+                                        child: Image(
+                                          image: AssetImage(doc['story.img']),
+                                          height: 220,
+                                          width: 140,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 10,
+                                      left: 10,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: doc['story.watched']
+                                                  ? Colors.blue
+                                                  : const Color.fromARGB(
+                                                      255, 166, 167, 166),
+                                              width: 3),
+                                        ),
+                                        child: CircleAvatar(
+                                            backgroundImage:
+                                                AssetImage(doc['avatar']),
+                                            radius: 18),
+                                      ),
+                                    )
+                                  ]),
+                                )
+                          ]);
+                    }),
               ),
             ],
           ),
